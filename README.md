@@ -6,7 +6,7 @@
   ◦ Bones can have more child bones</br>
   ◦ Each bone has its position, rotation angle and length (end point can be calculated)</br>
   ◦ User can select starting and ending bone of the IK sequence</br>
-- Forward kinematics
+- Forward kinematics</br>
   ◦ Select bone by clicking, change rotation angle by dragging</br>
   ◦ Child bones must be transformed correctly </br>
 - Inverse kinematics (relaxation by gradient calculation)</br>
