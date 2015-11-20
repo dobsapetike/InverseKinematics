@@ -54,15 +54,34 @@ namespace InverseKinematics.ViewModel
 
         #endregion
 
+        #region Targetpoint
+
+        /// <summary>
+        /// Target point of the inverse kinematics
+        /// </summary>
+        public Vector TargetPoint
+        {
+            get { return _targetPoint; }
+            private set
+            {
+                _targetPoint = value;
+                RaisePropertyChanged(() => TargetPoint);
+            }
+        }
+        private Vector _targetPoint;
+
+        #endregion
+
         #region Bones
 
         /// <summary>
         /// Properties for hihglighted bones
         /// </summary>
-        private Bone _selectedEndPointBone, _selectedBone, _mainBone;
+        private Bone _selectedEndPointBone, _selectedBone, 
+            _mainBone, _selectedInverseBaseBone, _selectedInverseEffectorBone;
 
         /// <summary>
-        /// The main point of the sceleton
+        /// The main point of the skeleton
         /// </summary>
         public Vector MainPoint
         {
@@ -74,7 +93,7 @@ namespace InverseKinematics.ViewModel
         }
 
         /// <summary>
-        /// Notifiable collection of all the bones in the sceleton
+        /// Notifiable collection of all the bones in the skeleton
         /// </summary>
         public ObservableCollection<Bone> Bones { get; private set; }
 
@@ -145,12 +164,51 @@ namespace InverseKinematics.ViewModel
 
         #endregion
 
+        #region Bone inverse click command
+
+        private DelegateCommand _boneInverseClickCommand;
+
+        /// <summary>
+        /// Handles the bone click events and routes it to the model
+        /// </summary>
+        public ICommand BoneInverseClickCommand
+        {
+            get
+            {
+                return _boneInverseClickCommand ?? (_boneInverseClickCommand =
+                    new DelegateCommand(OnBoneInverseClickCommand, _ => true));
+            }
+        }
+
+        private void OnBoneInverseClickCommand(object value)
+        {
+            var bone = (Bone)value;
+            if (!bone.IsEndEffector)
+            {
+                if (_selectedInverseBaseBone != null) 
+                    _selectedInverseBaseBone.IsInverseBaseSelected = false;
+                bone.IsInverseBaseSelected = !bone.IsInverseBaseSelected;
+                _selectedInverseBaseBone = bone.IsInverseBaseSelected ? bone : null;
+            }
+            else
+            {
+                if (_selectedInverseEffectorBone != null)
+                    _selectedInverseEffectorBone.IsInverseEffectorSelected = false;
+                bone.IsInverseEffectorSelected = !bone.IsInverseEffectorSelected;
+                _selectedInverseEffectorBone = bone.IsInverseEffectorSelected ? bone : null;
+            }
+        }
+
+        #endregion
+
         #endregion
 
         #region Event handlers
 
         public void HandleMouseClick(MouseButtonEventArgs e, Point position)
         {
+            if (e.ChangedButton != MouseButton.Left) return;
+
             // first click is a special case since the main structure hasn't been created yet
             if (ClickPoint == null && Bones.Count == 0)
             {
@@ -168,6 +226,15 @@ namespace InverseKinematics.ViewModel
                     RaisePropertyChanged(() => MainPoint);
                 } 
                 ClickPoint = MovePoint = null;
+            }
+            else
+            {
+                // set target for inverse kinematics and start algorithm if bones are selected
+                if (_selectedInverseBaseBone != null && _selectedInverseEffectorBone != null)
+                {
+                    TargetPoint = new Vector(position.X, position.Y);
+                    _selectedInverseBaseBone.InverseKinematics(_selectedInverseEffectorBone, TargetPoint);
+                }
             }
         }
 

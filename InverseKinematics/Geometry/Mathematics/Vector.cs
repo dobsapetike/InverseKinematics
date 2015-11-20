@@ -1,4 +1,5 @@
-﻿using InverseKinematics.Framework;
+﻿using System;
+using InverseKinematics.Framework;
 
 namespace InverseKinematics.Geometry.Mathematics
 {
@@ -58,10 +59,24 @@ namespace InverseKinematics.Geometry.Mathematics
 			return new Vector(a * b.X, a * b.Y, a * b.Z, a * b.W);
 		}
 
+        public static Vector operator /(Vector a, double b)
+        {
+            return new Vector(a.X / b, a.Y / b, a.Z / b, a.W / b);
+        }
+
+        /// <summary>
+        /// Computes euclidean distance between two points
+        /// </summary>
+	    public static double Distance(Vector a, Vector b)
+	    {
+	        return Math.Sqrt((a.X - b.X)*(a.X - b.X) +
+                     (a.Y - b.Y) * (a.Y - b.Y) + (a.Z - b.Z) * (a.Z - b.Z));
+	    }
+
 		/// <summary>
 		/// Dot Product
 		/// </summary>
-        public static double operator *(Vector a, Vector b)
+		public static double operator *(Vector a, Vector b)
 		{
 			return a.X * b.X + a.Y * b.Y + a.Z * b.Z + a.W * b.W;
 		}

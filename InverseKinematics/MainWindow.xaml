@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:InverseKinematics.ViewModel"
         xmlns:converters="clr-namespace:InverseKinematics.Converters"
-        Title="Forward and Inverse Kinematics on 2D skeleton" Height="500" Width="750" ResizeMode="NoResize">
+        Title="Forward and Inverse Kinematics on 2D skeleton" Height="600" Width="850" ResizeMode="NoResize">
     <Window.Resources>
         <vm:KinematicsViewModel x:Key="ViewModel"/>
         <converters:MarginConverter x:Key="MarginConverter"/>
@@ -26,6 +26,10 @@
                             <Line.InputBindings>
                                 <MouseBinding Gesture="RightClick"  CommandParameter="{Binding}"
                                     Command="{Binding DataContext.BoneClickCommand, 
+                                        RelativeSource={RelativeSource Mode=FindAncestor, 
+                                        AncestorType={x:Type Canvas}, AncestorLevel=2}}"/>
+                                <MouseBinding Gesture="LeftClick"  CommandParameter="{Binding}"
+                                    Command="{Binding DataContext.BoneInverseClickCommand, 
                                         RelativeSource={RelativeSource Mode=FindAncestor, 
                                         AncestorType={x:Type Canvas}, AncestorLevel=2}}"/>
                             </Line.InputBindings>
@@ -62,6 +66,22 @@
                         <DataTrigger Binding="{Binding IsSelected}" Value="False">
                             <Setter Property="Stroke" TargetName="Edge" Value="GhostWhite"/>
                             <Setter Property="StrokeThickness" TargetName="Edge" Value="5"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IsInverseBaseSelected}" Value="False">
+                            <Setter Property="Stroke" TargetName="Edge" Value="GhostWhite"/>
+                            <Setter Property="StrokeThickness" TargetName="Edge" Value="5"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IsInverseEffectorSelected}" Value="False">
+                            <Setter Property="Stroke" TargetName="Edge" Value="GhostWhite"/>
+                            <Setter Property="StrokeThickness" TargetName="Edge" Value="5"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IsInverseBaseSelected}" Value="True">
+                            <Setter Property="Stroke" TargetName="Edge" Value="DarkSeaGreen"/>
+                            <Setter Property="StrokeThickness" TargetName="Edge" Value="6"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IsInverseEffectorSelected}" Value="True">
+                            <Setter Property="Stroke" TargetName="Edge" Value="DarkSeaGreen"/>
+                            <Setter Property="StrokeThickness" TargetName="Edge" Value="6"/>
                         </DataTrigger>
                         <DataTrigger Binding="{Binding IsSelected}" Value="True">
                             <Setter Property="Stroke" TargetName="Edge" Value="Gold"/>
