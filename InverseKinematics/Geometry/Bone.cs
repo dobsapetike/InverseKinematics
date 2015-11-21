@@ -3,9 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
-using System.Net;
 using System.Threading;
-using System.Windows.Threading;
 using InverseKinematics.Framework;
 using InverseKinematics.Geometry.Mathematics;
 using Vector = InverseKinematics.Geometry.Mathematics.Vector;
@@ -99,34 +97,86 @@ namespace InverseKinematics.Geometry
         private bool _isSelected;
 
         /// <summary>
-        /// Whether the bone has been selected for inverse kinematics base
+        /// Whether the bone has been selected for inverse kinematics simulation
         /// </summary>
-        public bool IsInverseBaseSelected
+        public bool IsInverseSelected
         {
-            get { return _isInverseBaseSelected; }
+            get { return _isInverseSelected; }
             set
             {
-                if (_isInverseBaseSelected == value) return;
-                _isInverseBaseSelected = value;
-                RaisePropertyChanged(() => IsInverseBaseSelected);
+                if (_isInverseSelected == value) return;
+                _isInverseSelected = value;
+                IsInverseConflicted = false;
+                RaisePropertyChanged(() => IsInverseSelected);
             }
         }
-        private bool _isInverseBaseSelected;
+        private bool _isInverseSelected;
 
         /// <summary>
-        /// Whether the bone has been selected for inverse kinematics end effector
+        /// Whether the bone selected for inverse kinematics is conflicted
         /// </summary>
-        public bool IsInverseEffectorSelected
+        public bool IsInverseConflicted
         {
-            get { return _isInverseEffectorSelected; }
+            get { return _isInverseConflicted; }
             set
             {
-                if (_isInverseEffectorSelected == value) return;
-                _isInverseEffectorSelected = value;
-                RaisePropertyChanged(() => IsInverseEffectorSelected);
+                if (_isInverseConflicted == value) return;
+                _isInverseConflicted = value;
+                RaisePropertyChanged(() => IsInverseConflicted);
             }
         }
-        private bool _isInverseEffectorSelected;
+        private bool _isInverseConflicted;
+
+        #region Static methods for inverse kinematics handling
+
+        /// <summary>
+        /// Selected bones for inverse kinematics - there is always two, 
+        /// list is used to make it easier.
+        /// </summary>
+        private static List<Bone> _selectedBones = new List<Bone>();
+
+        private static bool _conflicted;
+
+        /// <summary>
+        /// Select given bone for inverse kinematics. If its a third, unselect oldest
+        /// </summary>
+        public static void SelectNewInverse(Bone b)
+        {
+            b.IsInverseSelected = !b.IsInverseSelected;
+            if (_selectedBones.Contains(b))
+                _selectedBones.Remove(b);
+            else
+            {
+                if (_selectedBones.Count > 1)
+                {
+                    _selectedBones[0].IsInverseSelected = false;
+                    _selectedBones.Remove(_selectedBones.First());
+                }
+                _selectedBones.Add(b);
+
+                if (_selectedBones.Count != 2) return;
+                // check conflicts
+                _selectedBones[0].IsInverseConflicted = _selectedBones[1].IsInverseConflicted 
+                    = _conflicted = false;
+                if (_selectedBones.Count < 2) return;
+                if (_selectedBones[0].GatherAncestorsBetween(_selectedBones[1]) != null) return; // ok
+                if (_selectedBones[1].GatherAncestorsBetween(_selectedBones[0]) != null)
+                    _selectedBones = new List<Bone> {_selectedBones[1], _selectedBones[0]};
+                else
+                    _selectedBones[0].IsInverseConflicted = _selectedBones[1].IsInverseConflicted 
+                        = _conflicted = true;
+            }
+        }
+
+        public static bool StartInverseKinematics(Vector target)
+        {
+            if (_selectedBones.Count != 2 || _conflicted) return false;
+            _selectedBones[0].InverseKinematics(
+                _selectedBones[1], target);
+            return true;
+        }
+
+        #endregion
 
         #endregion
 
@@ -223,7 +273,7 @@ namespace InverseKinematics.Geometry
         /// Returns a list of all bones between the the current and 
         /// bone 'desc', which is a descendant of the current
         /// </summary>
-        private List<Bone> GatherAncestors(Bone desc)
+        private List<Bone> GatherAncestorsBetween(Bone desc)
         {
             var bones = new List<Bone>();
             while (desc != null)
@@ -236,13 +286,25 @@ namespace InverseKinematics.Geometry
         }
 
         /// <summary>
+        /// Animation variables
+        /// </summary>
+        private int AnimationSteps = 15;
+        private BackgroundWorker _animThread;
+
+        /// <summary>
         /// Performs inverse kinematics, using the current bone as the starting point of the IK sequence
         /// </summary>
         public void InverseKinematics(Bone endEffector, Vector target)
         {
-            var bones = GatherAncestors(endEffector);
+            // if previous task is in progress, stop it
+            if (_animThread != null && _animThread.IsBusy)
+                _animThread.CancelAsync();
+
+            var bones = GatherAncestorsBetween(endEffector);
+            if (bones == null) return; 
             var angles = bones.Select(x => x.Angle).ToArray();
 
+            // start optimization
             var iterations = 0;
             while (Vector.Distance(target, endEffector.EndPosition)
                 > DistanceLimit && iterations++ < IterationLimit)
@@ -250,25 +312,38 @@ namespace InverseKinematics.Geometry
                 InverseKinematicsStep(bones, endEffector, target);
             }
 
+            // compute new angles
             var anglesNew = bones.Select(x => x.Angle).ToArray();
-            for (var i = 0; i < bones.Count; ++i) bones[i]._angle = angles[i];
+            var angleDeltas = new double[bones.Count];
+            for (var i = 0; i < bones.Count; ++i)
+            {
+                bones[i]._angle = angles[i];
+                // use the smaller angle to animate
+                double angle1 = Angles.AdjustAngle(anglesNew[i] - angles[i]),
+                    angle2 = Angles.AdjustAngle(angles[i] - anglesNew[i]);
+                angleDeltas[i] = angle1 < angle2 
+                    ? angle1 / AnimationSteps : -angle2 / AnimationSteps;
+            }
 
-            // apply new angles gradually
-            var worker = new BackgroundWorker();
+            var worker = new BackgroundWorker { WorkerSupportsCancellation = true };
+            // apply new angles gradually - on a new thread, so the main can handle drawing
             worker.DoWork += (s, e) =>
             {
-                for (var j = 0; j < 10; ++j)
+                var thread = (BackgroundWorker)s;
+                for (var j = 0; j < AnimationSteps; ++j)
                 {
                     for (var i = 0; i < bones.Count; ++i)
                     {
-                        bones[i].Angle += (anglesNew[i] - angles[i]) / 10d;
+                        bones[i].Angle += angleDeltas[i];
                         bones[i]._children.ForEach(x => x.StartPosition = bones[i].EndPosition);
                     }
                     ForwardKinematics(Angle);
-                    Thread.Sleep(25);
+                    Thread.Sleep(20);
+                    if (thread.CancellationPending) break;
                 }
             };
             worker.RunWorkerAsync();
+            _animThread = worker;
         }
 
         /// <summary>
@@ -293,7 +368,7 @@ namespace InverseKinematics.Geometry
 
             for (var i = 0; i < ikSequence.Count; ++i)
             {
-                ikSequence[i]._angle += angles[i];
+                ikSequence[i]._angle = Angles.AdjustAngle(ikSequence[i]._angle + angles[i]);
                 ikSequence[i]._children.ForEach(x => x._startPosition = ikSequence[i].EndPosition);
             }
         }

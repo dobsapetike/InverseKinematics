@@ -67,24 +67,24 @@
                             <Setter Property="Stroke" TargetName="Edge" Value="GhostWhite"/>
                             <Setter Property="StrokeThickness" TargetName="Edge" Value="5"/>
                         </DataTrigger>
-                        <DataTrigger Binding="{Binding IsInverseBaseSelected}" Value="False">
+                        <DataTrigger Binding="{Binding IsInverseSelected}" Value="False">
                             <Setter Property="Stroke" TargetName="Edge" Value="GhostWhite"/>
                             <Setter Property="StrokeThickness" TargetName="Edge" Value="5"/>
                         </DataTrigger>
-                        <DataTrigger Binding="{Binding IsInverseEffectorSelected}" Value="False">
+                        <DataTrigger Binding="{Binding IsInverseConflicted}" Value="False">
                             <Setter Property="Stroke" TargetName="Edge" Value="GhostWhite"/>
-                            <Setter Property="StrokeThickness" TargetName="Edge" Value="5"/>
-                        </DataTrigger>
-                        <DataTrigger Binding="{Binding IsInverseBaseSelected}" Value="True">
-                            <Setter Property="Stroke" TargetName="Edge" Value="DarkSeaGreen"/>
                             <Setter Property="StrokeThickness" TargetName="Edge" Value="6"/>
                         </DataTrigger>
-                        <DataTrigger Binding="{Binding IsInverseEffectorSelected}" Value="True">
+                        <DataTrigger Binding="{Binding IsInverseSelected}" Value="True">
                             <Setter Property="Stroke" TargetName="Edge" Value="DarkSeaGreen"/>
                             <Setter Property="StrokeThickness" TargetName="Edge" Value="6"/>
                         </DataTrigger>
                         <DataTrigger Binding="{Binding IsSelected}" Value="True">
                             <Setter Property="Stroke" TargetName="Edge" Value="Gold"/>
+                            <Setter Property="StrokeThickness" TargetName="Edge" Value="6"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IsInverseConflicted}" Value="True">
+                            <Setter Property="Stroke" TargetName="Edge" Value="IndianRed"/>
                             <Setter Property="StrokeThickness" TargetName="Edge" Value="6"/>
                         </DataTrigger>
                     </DataTemplate.Triggers>

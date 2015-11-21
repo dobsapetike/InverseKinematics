@@ -1,4 +1,5 @@
-﻿using System.Collections.ObjectModel;
+﻿using System;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Input;
@@ -77,8 +78,7 @@ namespace InverseKinematics.ViewModel
         /// <summary>
         /// Properties for hihglighted bones
         /// </summary>
-        private Bone _selectedEndPointBone, _selectedBone, 
-            _mainBone, _selectedInverseBaseBone, _selectedInverseEffectorBone;
+        private Bone _selectedEndPointBone, _selectedBone, _mainBone;
 
         /// <summary>
         /// The main point of the skeleton
@@ -132,7 +132,7 @@ namespace InverseKinematics.ViewModel
         {
             var bone = (Bone)value;
             _selectedEndPointBone = bone;
-            ClickPoint = bone.EndPosition;
+            ClickPoint = MovePoint = bone.EndPosition;
         }
 
         #endregion
@@ -183,20 +183,41 @@ namespace InverseKinematics.ViewModel
         private void OnBoneInverseClickCommand(object value)
         {
             var bone = (Bone)value;
-            if (!bone.IsEndEffector)
+            Bone.SelectNewInverse(bone);
+        }
+
+        #endregion
+
+        #region Show about command
+
+        private DelegateCommand _showAboutCommand;
+
+        /// <summary>
+        /// Shows about message
+        /// </summary>
+        public ICommand ShowAboutCommand
+        {
+            get
             {
-                if (_selectedInverseBaseBone != null) 
-                    _selectedInverseBaseBone.IsInverseBaseSelected = false;
-                bone.IsInverseBaseSelected = !bone.IsInverseBaseSelected;
-                _selectedInverseBaseBone = bone.IsInverseBaseSelected ? bone : null;
+                return _showAboutCommand ?? (_showAboutCommand =
+                    new DelegateCommand(OnShowAboutCommad, _ => true));
             }
-            else
-            {
-                if (_selectedInverseEffectorBone != null)
-                    _selectedInverseEffectorBone.IsInverseEffectorSelected = false;
-                bone.IsInverseEffectorSelected = !bone.IsInverseEffectorSelected;
-                _selectedInverseEffectorBone = bone.IsInverseEffectorSelected ? bone : null;
-            }
+        }
+
+        private void OnShowAboutCommad(object value)
+        {
+            MessageBox.Show(
+                "Mathematical modelling project" + Environment.NewLine
+                + "Simulation of forward and inverse kinematics on 2D skeleton" + Environment.NewLine 
+                + "Authors: Peter Dobsa, Marek Zajko" + Environment.NewLine + Environment.NewLine
+                + "Controls" + Environment.NewLine
+                + "Bone creation: left click in the canvas to set starting and ending points of a bone, "
+                + "when skeleton exists the starting point has to be an ending point of an existing bone" + Environment.NewLine
+                + "Forward kinematics: right click and hold the selected bone, drag to modify rotation angle" + Environment.NewLine
+                + "Inverse kinematics: left click to select the starting bone of the IK sequence and another left click to "
+                + "select the end effector, a consecutive click into the canvas starts up the algorithm "
+                + "and at the same time sets the target position of the end effector",
+                "About", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         #endregion
@@ -212,7 +233,7 @@ namespace InverseKinematics.ViewModel
             // first click is a special case since the main structure hasn't been created yet
             if (ClickPoint == null && Bones.Count == 0)
             {
-                ClickPoint = new Vector(position.X, position.Y);
+                MovePoint = ClickPoint = new Vector(position.X, position.Y);
                 return;
             }
 
@@ -224,17 +245,13 @@ namespace InverseKinematics.ViewModel
                 {
                     _mainBone = Bones.First();
                     RaisePropertyChanged(() => MainPoint);
-                } 
-                ClickPoint = MovePoint = null;
+                }
+                MovePoint = ClickPoint = null;
             }
             else
             {
                 // set target for inverse kinematics and start algorithm if bones are selected
-                if (_selectedInverseBaseBone != null && _selectedInverseEffectorBone != null)
-                {
-                    TargetPoint = new Vector(position.X, position.Y);
-                    _selectedInverseBaseBone.InverseKinematics(_selectedInverseEffectorBone, TargetPoint);
-                }
+                Bone.StartInverseKinematics(new Vector(position.X, position.Y));
             }
         }
 

@@ -25,8 +25,8 @@ namespace InverseKinematics.Geometry.Mathematics
         /// </summary>
 	    public static double AdjustAngle(double angleRad)
 	    {
-	        if (angleRad < 0) angleRad += Math.PI * 2;
-            if (angleRad > Math.PI * 2) angleRad -= Math.PI * 2;
+	        while (angleRad < 0) angleRad += Math.PI * 2;
+            while (angleRad > Math.PI * 2) angleRad -= Math.PI * 2;
 	        return angleRad;
 	    }
 
