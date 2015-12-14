@@ -7,6 +7,7 @@ using System.Threading;
 using InverseKinematics.Framework;
 using InverseKinematics.Geometry.Mathematics;
 using Vector = InverseKinematics.Geometry.Mathematics.Vector;
+using AM = Accord.Math.Matrix;
 
 namespace InverseKinematics.Geometry
 {
@@ -225,6 +226,13 @@ namespace InverseKinematics.Geometry
                 parent._children.Add(this);
         }
 
+        /// <summary>
+        /// For declaring dummy instances
+        /// </summary>
+        public Bone()
+        {
+        }
+
         #endregion
 
         #region Forward kinematics
@@ -266,8 +274,41 @@ namespace InverseKinematics.Geometry
         /// <summary>
         /// Halting criterions
         /// </summary>
-        private const int IterationLimit = 200;
-        private const double DistanceLimit = .5d;
+        private const double DistanceLimit = .05d;
+
+        private static int _iterationLimit = 200;
+
+        public int IterationLimit 
+        { 
+            get { return _iterationLimit; }
+            set
+            {
+                _iterationLimit = value;
+                RaisePropertyChanged(() => IterationLimit);
+            } 
+        }
+
+        /// <summary>
+        /// Algorithm type
+        /// </summary>
+        public enum IKAlgorithm
+        {
+            JacobianTranspose,
+            JacobianPseudoInverse,
+            LeastSquares,
+        }
+
+        private static IKAlgorithm _algorithm;
+
+        public IKAlgorithm Algorithm
+        {
+            get { return _algorithm; }
+            set
+            {
+                _algorithm = value;
+                RaisePropertyChanged(() => Algorithm);
+            }
+        }
 
         /// <summary>
         /// Returns a list of all bones between the the current and 
@@ -288,7 +329,17 @@ namespace InverseKinematics.Geometry
         /// <summary>
         /// Animation variables
         /// </summary>
-        private int AnimationSteps = 15;
+        private static int _animationSteps = 35;
+
+        public int AnimationSteps
+        {
+            get { return _animationSteps; }
+            set
+            {
+                _animationSteps = value;
+                RaisePropertyChanged(() => AnimationSteps);
+            }
+        }
         private BackgroundWorker _animThread;
 
         /// <summary>
@@ -363,8 +414,25 @@ namespace InverseKinematics.Geometry
                 jacobian[1, i] = partderiv.Y;
             }
             var e = target - endEffector.EndPosition;
-            var jinv = Accord.Math.Matrix.PseudoInverse(jacobian);
-            var angles = Accord.Math.Matrix.Multiply(jinv, new[] { e.X, e.Y });
+
+            double[,] relaxed = null, transposed;
+            switch (Algorithm)
+            {
+                case IKAlgorithm.JacobianPseudoInverse:
+                    relaxed = AM.PseudoInverse(jacobian);
+                    break;
+                case IKAlgorithm.JacobianTranspose:
+                    transposed = AM.Transpose(jacobian);
+                    relaxed = AM.Multiply(0.00001, transposed);
+                    break;
+                case IKAlgorithm.LeastSquares:
+                    transposed = AM.Transpose(jacobian);
+                    var inv = AM.PseudoInverse(AM.Add(AM.Multiply(jacobian, transposed), AM.Multiply(0.1, AM.Identity(2))));
+                    relaxed = AM.Multiply(transposed, inv);
+                    break;
+            }
+
+            var angles = Accord.Math.Matrix.Multiply(relaxed, new[] {e.X, e.Y});
 
             for (var i = 0; i < ikSequence.Count; ++i)
             {
@@ -374,6 +442,5 @@ namespace InverseKinematics.Geometry
         }
 
         #endregion
-
     }
 }

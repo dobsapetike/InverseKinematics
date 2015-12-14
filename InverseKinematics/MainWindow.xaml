@@ -3,14 +3,40 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:InverseKinematics.ViewModel"
         xmlns:converters="clr-namespace:InverseKinematics.Converters"
+        xmlns:geometry="clr-namespace:InverseKinematics.Geometry"
         Title="Forward and Inverse Kinematics on 2D skeleton" Height="600" Width="850" ResizeMode="NoResize">
     <Window.Resources>
         <vm:KinematicsViewModel x:Key="ViewModel"/>
         <converters:MarginConverter x:Key="MarginConverter"/>
         <converters:EllipsePointConverter x:Key="EllipsePointConverter"/>
+        <converters:EnumBooleanConverter x:Key="EnumBooleanConverter"/>
+        <Storyboard x:Key="OnSettingsShowStory">
+            <DoubleAnimation To="0" Duration="0:0:0.3" 
+                             Storyboard.TargetProperty="(UIElement.Opacity)" Storyboard.TargetName="PolygonSettingsBcg"/>
+            <DoubleAnimation To="0" Duration="0:0:0.3"
+                             Storyboard.TargetProperty="(UIElement.Opacity)" Storyboard.TargetName="PolygonSettingsBut"/>
+            <DoubleAnimation To="635" Duration="0:0:0.3"
+                             Storyboard.TargetProperty="(Canvas.Left)" Storyboard.TargetName="PanelSettings"/>
+        </Storyboard>
+        <Storyboard x:Key="OnSettingsHideStory">
+            <DoubleAnimation To="1" Duration="0:0:0.3"
+                             Storyboard.TargetProperty="(UIElement.Opacity)" Storyboard.TargetName="PolygonSettingsBcg"/>
+            <DoubleAnimation To="1" Duration="0:0:0.3"
+                             Storyboard.TargetProperty="(UIElement.Opacity)" Storyboard.TargetName="PolygonSettingsBut"/>
+            <DoubleAnimation To="840" Duration="0:0:0.3"
+                             Storyboard.TargetProperty="(Canvas.Left)" Storyboard.TargetName="PanelSettings"/>
+        </Storyboard>
+        <geometry:Bone x:Key="Bone"/>
     </Window.Resources>
+
     <Canvas Background="DimGray" Name="MainCanvas" DataContext="{StaticResource ViewModel}"
             MouseDown="Window_OnMouseDown" MouseMove="Window_OnMouseMove">
+        <!-- Skeleton drawing -->
+        <TextBlock Canvas.Left="{Binding TargetPoint.X, Converter={StaticResource EllipsePointConverter}, 
+                               ConverterParameter=5, FallbackValue=-18}" 
+                 Canvas.Top="{Binding TargetPoint.Y, Converter={StaticResource EllipsePointConverter}, 
+                              ConverterParameter=20, FallbackValue=-18}" 
+                 Foreground="Red" Text="x" FontWeight="Bold"/>
         <ItemsControl ItemsSource="{Binding Bones, Mode=OneWay}">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
@@ -79,12 +105,12 @@
                             <Setter Property="Stroke" TargetName="Edge" Value="DarkSeaGreen"/>
                             <Setter Property="StrokeThickness" TargetName="Edge" Value="6"/>
                         </DataTrigger>
-                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                            <Setter Property="Stroke" TargetName="Edge" Value="Gold"/>
-                            <Setter Property="StrokeThickness" TargetName="Edge" Value="6"/>
-                        </DataTrigger>
                         <DataTrigger Binding="{Binding IsInverseConflicted}" Value="True">
                             <Setter Property="Stroke" TargetName="Edge" Value="IndianRed"/>
+                            <Setter Property="StrokeThickness" TargetName="Edge" Value="6"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                            <Setter Property="Stroke" TargetName="Edge" Value="Gold"/>
                             <Setter Property="StrokeThickness" TargetName="Edge" Value="6"/>
                         </DataTrigger>
                     </DataTemplate.Triggers>
@@ -113,5 +139,54 @@
                  Canvas.Top="{Binding MainPoint.Y, Converter={StaticResource EllipsePointConverter}, 
                               ConverterParameter=10, FallbackValue=-18}" 
                  Fill="Black" Width="10" Height="10"/>
+        
+        <!-- ui controls -->
+        <StackPanel Name="PanelSettings" Width="200" Canvas.Left="840" Canvas.Top="0" 
+                    Background="LightGray" Orientation="Vertical">
+            <TextBlock Text="Inverse kinematics algorithm" Margin="5,10,0,5"/>
+            <RadioButton Content="Jacobian Transpose" Margin="5,0,0,0" GroupName="IKAlgorithm"
+                         IsChecked="{Binding Source={StaticResource Bone}, Path=Algorithm, 
+                         Converter={StaticResource EnumBooleanConverter}, ConverterParameter=JacobianTranspose}" />
+            <RadioButton Content="Jacobian Pseudoinverse" Margin="5,0,0,0" GroupName="IKAlgorithm"
+                         IsChecked="{Binding Source={StaticResource Bone}, Path=Algorithm, 
+                         Converter={StaticResource EnumBooleanConverter}, ConverterParameter=JacobianPseudoInverse}"/>
+            <RadioButton Content="Least Squares" Margin="5,0,0,0" GroupName="IKAlgorithm"
+                         IsChecked="{Binding Source={StaticResource Bone}, Path=Algorithm, 
+                         Converter={StaticResource EnumBooleanConverter}, ConverterParameter=LeastSquares}"/>
+            <TextBlock Margin="5,10,0,5">
+                <Run Text="Iterations: " />
+                <Run Text="{Binding ElementName=SliderIters, Path=Value}" />
+            </TextBlock>
+            <Slider Name="SliderIters" Minimum="10" Maximum="750" 
+                    Value="{Binding Source={StaticResource Bone}, Path=IterationLimit}"
+                    Margin="5,0,5,0" TickFrequency="1" IsSnapToTickEnabled="True"/>
+            <Separator Margin="10"/>
+            <TextBlock Text="Animation speed"  Margin="5,0,0,5"/>
+            <Slider Minimum="2" Maximum="60" IsDirectionReversed="True"
+                    Value="{Binding Source={StaticResource Bone}, Path=AnimationSteps}"
+                    Margin="5,0,5,0" TickFrequency="1" IsSnapToTickEnabled="True"/>
+            <Button Content="About" Width="50" Height="25" Margin="0,10,0,10" Command="{Binding ShowAboutCommand}"/>
+            <StackPanel.Triggers>
+                <EventTrigger RoutedEvent="UserControl.MouseLeave">
+                    <BeginStoryboard Storyboard="{StaticResource OnSettingsHideStory}"/>
+                </EventTrigger>
+            </StackPanel.Triggers>
+        </StackPanel>
+        <Polygon Name="PolygonSettingsBcg" Points="735, 1 835, 1 835, 100" Fill="Yellow"/>
+        <Polygon Name="PolygonSettingsBut" Points="735, 1 835, 1 835, 100" 
+                 Stroke="Black" StrokeThickness="1">
+            <Polygon.Fill>
+                <ImageBrush ImageSource="Resources/settings.png" Stretch="Uniform">
+                    <ImageBrush.Transform>
+                        <ScaleTransform ScaleX="0.5" ScaleY="0.5" CenterX="825" CenterY="10"/>
+                    </ImageBrush.Transform>
+                </ImageBrush>
+            </Polygon.Fill>
+            <Polygon.Triggers>
+                <EventTrigger RoutedEvent="UserControl.MouseEnter">
+                    <BeginStoryboard Storyboard="{StaticResource OnSettingsShowStory}"/>
+                </EventTrigger>
+            </Polygon.Triggers>
+        </Polygon>
     </Canvas>
 </Window>

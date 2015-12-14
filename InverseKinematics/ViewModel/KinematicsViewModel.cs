@@ -81,6 +81,14 @@ namespace InverseKinematics.ViewModel
         private Bone _selectedEndPointBone, _selectedBone, _mainBone;
 
         /// <summary>
+        /// Main bone of the sceleton
+        /// </summary>
+        public Bone MainBone
+        {
+            get {  return _mainBone; }
+        }
+
+        /// <summary>
         /// The main point of the skeleton
         /// </summary>
         public Vector MainPoint
@@ -251,7 +259,9 @@ namespace InverseKinematics.ViewModel
             else
             {
                 // set target for inverse kinematics and start algorithm if bones are selected
-                Bone.StartInverseKinematics(new Vector(position.X, position.Y));
+                var target = new Vector(position.X, position.Y);
+                if (Bone.StartInverseKinematics(target))
+                    TargetPoint = target;
             }
         }
 
@@ -263,6 +273,7 @@ namespace InverseKinematics.ViewModel
                 if (_selectedBone != null)
                     _selectedBone.ForwardKinematics(Angles.ComputeAngle(
                         _selectedBone.StartPosition, new Vector(position.X, position.Y)));
+                TargetPoint = null;
             }
             else
             {
