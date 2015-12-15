@@ -76,7 +76,7 @@ namespace InverseKinematics.ViewModel
         #region Bones
 
         /// <summary>
-        /// Properties for hihglighted bones
+        /// Properties for highlighted bones
         /// </summary>
         private Bone _selectedEndPointBone, _selectedBone, _mainBone;
 
@@ -219,13 +219,42 @@ namespace InverseKinematics.ViewModel
                 + "Simulation of forward and inverse kinematics on 2D skeleton" + Environment.NewLine 
                 + "Authors: Peter Dobsa, Marek Zajko" + Environment.NewLine + Environment.NewLine
                 + "Controls" + Environment.NewLine
-                + "Bone creation: left click in the canvas to set starting and ending points of a bone, "
-                + "when skeleton exists the starting point has to be an ending point of an existing bone" + Environment.NewLine
+                + "Bone creation: left click on the canvas to set starting and ending points of a bone, "
+                + "when skeleton exists the starting point has to be an ending point of an existing bone"
+                + "(i.e. only one skeleton is allowed)" + Environment.NewLine
                 + "Forward kinematics: right click and hold the selected bone, drag to modify rotation angle" + Environment.NewLine
                 + "Inverse kinematics: left click to select the starting bone of the IK sequence and another left click to "
-                + "select the end effector, a consecutive click into the canvas starts up the algorithm "
-                + "and at the same time sets the target position of the end effector",
+                + "select the end effector, a consecutive click into the canvas starts up the selected algorithm "
+                + "and at the same time sets the target position of the end effector", 
                 "About", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        #endregion
+
+        #region Clear command
+
+        private DelegateCommand _clearCommand;
+
+        /// <summary>
+        /// Clears current skeleton
+        /// </summary>
+        public ICommand ClearCommand
+        {
+            get
+            {
+                return _clearCommand ?? (_clearCommand =
+                    new DelegateCommand(OnClearCommad, _ => true));
+            }
+        }
+
+        private void OnClearCommad(object value)
+        {
+            Bones.Clear();
+            Bone.ClearState();
+
+            ClickPoint = TargetPoint = MovePoint = null;
+            _mainBone = _selectedEndPointBone = _selectedBone = null;
+            RaisePropertyChanged(() => MainPoint);
         }
 
         #endregion

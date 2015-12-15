@@ -4,10 +4,12 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Threading;
+using System.Windows.Media;
 using InverseKinematics.Framework;
 using InverseKinematics.Geometry.Mathematics;
 using Vector = InverseKinematics.Geometry.Mathematics.Vector;
 using AM = Accord.Math.Matrix;
+using Matrix = InverseKinematics.Geometry.Mathematics.Matrix;
 
 namespace InverseKinematics.Geometry
 {
@@ -175,6 +177,11 @@ namespace InverseKinematics.Geometry
             _selectedBones[0].InverseKinematics(
                 _selectedBones[1], target);
             return true;
+        }
+
+        public static void ClearState()
+        {
+            _selectedBones.Clear();
         }
 
         #endregion
